@@ -47,6 +47,36 @@
 #include <nav_msgs/Odometry.h>
 #include <base_local_planner/trajectory_planner_ros.h>
 
+class lpf
+{
+  public:
+    float filter(const float& new_msrmt);
+    float c_ = 1.0; // Related to the cutoff frequency of the filter.
+      // c=1 results in a cutoff at 1/4 of the sampling rate.
+      // See bitbucket.org/AndyZe/pid if you want to get more sophisticated.
+      // Larger c --> trust the filtered data more, trust the measurements less --> lower cutoff frequency
+
+  private:
+    float prev_msrmts_ [3] = {0., 0., 0.};
+    float prev_filtered_msrmts_ [2] = {0., 0.};
+};
+
+float lpf::filter(const float& new_msrmt)
+{
+  // Push in the new measurement
+  prev_msrmts_[2] = prev_msrmts_[1];
+  prev_msrmts_[1] = prev_msrmts_[0];
+  prev_msrmts_[0] = new_msrmt;
+
+  float new_filtered_msrmt = (1/(1+c_*c_+1.414*c_))*(prev_msrmts_[2]+2*prev_msrmts_[1]+prev_msrmts_[0]-(c_*c_-1.414*c_)*prev_filtered_msrmts_[1]-(-2*c_*c_+2)*prev_filtered_msrmts_[0]);;
+
+  // Store the new filtered measurement
+  prev_filtered_msrmts_[1] = prev_filtered_msrmts_[0];
+  prev_filtered_msrmts_[0] = new_filtered_msrmt;
+
+  return new_filtered_msrmt;
+}
+
 namespace pose_follower {
   class PoseFollower : public nav_core::BaseLocalPlanner {
     public:
@@ -93,6 +123,13 @@ namespace pose_follower {
       std::vector<geometry_msgs::PoseStamped> global_plan_;
       base_local_planner::TrajectoryPlannerROS collision_planner_;
       int samples_;
+      // Low pass filter
+      lpf linear_x_filter_;
+      lpf linear_y_filter_;
+      lpf linear_z_filter_;
+      lpf rot_x_filter_;
+      lpf rot_y_filter_;
+      lpf rot_z_filter_;
   };
 };
 #endif

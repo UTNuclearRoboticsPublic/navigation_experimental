@@ -201,11 +201,14 @@ namespace pose_follower {
           fabs(diff.linear.y) <= tolerance_trans_ &&
 	  fabs(diff.angular.z) <= tolerance_rot_)
     {
+      // We're close enough, despite not being at the final waypoint. Stop here.
       if(current_waypoint_ < global_plan_.size() - 1)
       {
         current_waypoint_++;
         tf::poseStampedMsgToTF(global_plan_[current_waypoint_], target_pose);
         diff = diff2D(target_pose, robot_pose);
+        geometry_msgs::Twist empty_twist;
+        cmd_vel = empty_twist; // Stop
       }
       else
       {
@@ -224,6 +227,15 @@ namespace pose_follower {
       geometry_msgs::Twist empty_twist;
       cmd_vel = empty_twist;
     }
+
+    // Filter the command
+    cmd_vel.linear.x = linear_x_filter_.filter(cmd_vel.linear.x);
+    cmd_vel.linear.y = linear_y_filter_.filter(cmd_vel.linear.y);
+    cmd_vel.linear.z = linear_z_filter_.filter(cmd_vel.linear.z);
+
+    cmd_vel.angular.x = rot_x_filter_.filter(cmd_vel.angular.x);
+    cmd_vel.angular.y = rot_x_filter_.filter(cmd_vel.angular.y);
+    cmd_vel.angular.z = rot_x_filter_.filter(cmd_vel.angular.z);
 
     return true;
   }
