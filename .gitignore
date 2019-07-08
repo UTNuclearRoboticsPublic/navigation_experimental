@@ -40,3 +40,6 @@ eband_local_planner/msg/FollowBaseTrajectory*
 *.lai
 *.la
 *.a
+
+# vscode mapping folder
+.vscode
